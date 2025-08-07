@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Simple WebTorrent Client</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+    input[type="text"] { width: 500px; padding: 10px; }
+    button { padding: 10px 20px; margin-left: 10px; }
+    .torrent-info { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+    .file { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 3px; }
+    .progress { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; }
+    .progress-bar { height: 100%; background: #4caf50; transition: width 0.3s; }
+    .log { margin: 10px 0; padding: 5px; color: #666; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>🌟 Simple WebTorrent Client</h1>
+  
+  <div>
+    <input type="text" id="magnetInput" placeholder="Paste magnet link here..." />
+    <button onclick="addTorrent()">Download Torrent</button>
+  </div>
+  
+  <div id="output"></div>
+
+  <script src="https://cdn.jsdelivr.net/webtorrent/latest/webtorrent.min.js"></script>
+  <script>
+    const client = new WebTorrent()
+    const output = document.getElementById('output')
+
+    // Some example torrents for testing
+    const examples = [
+      'magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Ftracker.empire-js.us%3A1337&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.fastcast.nz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com',
+      'magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Ftracker.empire-js.us%3A1337&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.fastcast.nz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com'
+    ]
+
+    // Add example torrents as clickable links
+    output.innerHTML = `
+      <div style="margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 5px;">
+        <h3>Try these example torrents:</h3>
+        <p><strong>Sintel (Creative Commons movie):</strong><br>
+        <a href="#" onclick="document.getElementById('magnetInput').value='${examples[0]}'; return false;" style="word-break: break-all; font-size: 12px;">${examples[0].substring(0, 100)}...</a></p>
+        <p><strong>Big Buck Bunny (Creative Commons movie):</strong><br>
+        <a href="#" onclick="document.getElementById('magnetInput').value='${examples[1]}'; return false;" style="word-break: break-all; font-size: 12px;">${examples[1].substring(0, 100)}...</a></p>
+      </div>
+    `
+
+    function addTorrent() {
+      const magnetURI = document.getElementById('magnetInput').value.trim()
+      if (!magnetURI) {
+        alert('Please enter a magnet link!')
+        return
+      }
+
+      log('Adding torrent...')
+      
+      client.add(magnetURI, function (torrent) {
+        log(`✅ Added torrent: ${torrent.name}`)
+        log(`📁 Files: ${torrent.files.length}`)
+        log(`👥 Peers: ${torrent.numPeers}`)
+
+        const torrentDiv = document.createElement('div')
+        torrentDiv.className = 'torrent-info'
+        torrentDiv.innerHTML = `
+          <h3>📦 ${torrent.name}</h3>
+          <div class="progress">
+            <div class="progress-bar" id="progress-${torrent.infoHash}" style="width: 0%"></div>
+          </div>
+          <div id="stats-${torrent.infoHash}">
+            Size: ${(torrent.length / 1024 / 1024).toFixed(1)} MB | 
+            Downloaded: 0% | 
+            Speed: 0 KB/s | 
+            Peers: ${torrent.numPeers}
+          </div>
+          <div id="files-${torrent.infoHash}"></div>
+        `
+        output.appendChild(torrentDiv)
+
+        // Update progress
+        torrent.on('download', function () {
+          const percent = Math.round(torrent.progress * 100 * 100) / 100
+          document.getElementById(`progress-${torrent.infoHash}`).style.width = percent + '%'
+          document.getElementById(`stats-${torrent.infoHash}`).innerHTML = `
+            Size: ${(torrent.length / 1024 / 1024).toFixed(1)} MB | 
+            Downloaded: ${percent}% | 
+            Speed: ${(torrent.downloadSpeed / 1024).toFixed(1)} KB/s | 
+            Peers: ${torrent.numPeers}
+          `
+        })
+
+        // When download is complete
+        torrent.on('done', function () {
+          log(`🎉 Download complete: ${torrent.name}`)
+          
+          const filesDiv = document.getElementById(`files-${torrent.infoHash}`)
+          filesDiv.innerHTML = '<h4>📁 Files:</h4>'
+          
+          torrent.files.forEach(function (file) {
+            const fileDiv = document.createElement('div')
+            fileDiv.className = 'file'
+            fileDiv.innerHTML = `
+              <strong>${file.name}</strong> (${(file.length / 1024 / 1024).toFixed(1)} MB)
+              <button onclick="downloadFile('${torrent.infoHash}', '${file.name}')">💾 Save</button>
+            `
+            filesDiv.appendChild(fileDiv)
+            
+            // For video/image files, try to display them
+            if (file.name.match(/\.(mp4|webm|mov|avi|mkv)$/i)) {
+              file.appendTo(fileDiv, { autoplay: false, controls: true, style: 'width: 100%; max-width: 600px;' })
+            } else if (file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+              file.appendTo(fileDiv, { style: 'max-width: 400px; height: auto;' })
+            }
+          })
+        })
+      })
+    }
+
+    function downloadFile(torrentHash, fileName) {
+      const torrent = client.get(torrentHash)
+      if (torrent) {
+        const file = torrent.files.find(f => f.name === fileName)
+        if (file) {
+          file.getBlob((err, blob) => {
+            if (err) {
+              log(`❌ Error downloading ${fileName}: ${err.message}`)
+              return
+            }
+            
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = fileName
+            a.click()
+            URL.revokeObjectURL(url)
+            log(`💾 Saved ${fileName}`)
+          })
+        }
+      }
+    }
+
+    function log(message) {
+      const logDiv = document.createElement('div')
+      logDiv.className = 'log'
+      logDiv.textContent = `${new Date().toLocaleTimeString()}: ${message}`
+      output.appendChild(logDiv)
+    }
+
+    // Log client stats
+    setInterval(() => {
+      if (client.torrents.length > 0) {
+        client.torrents.forEach(torrent => {
+          if (torrent.numPeers > 0) {
+            log(`📊 ${torrent.name}: ${torrent.numPeers} peers, ${(torrent.downloadSpeed / 1024).toFixed(1)} KB/s`)
+          }
+        })
+      }
+    }, 10000)
+
+    log('🚀 WebTorrent client ready!')
+  </script>
+</body>
+</html>
