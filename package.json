@@ -4,13 +4,20 @@
     "description": "A 100% browser based torrent AND Tor relay.",
     "main": "main.js",
     "scripts": {
-        "start": "budo main.js --live -- -t babelify",
+        "start": "budo main.js --live -- -t babelify & node signaling-server.js",
+        "signal": "node signaling-server.js",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "webtorrent-hybrid": "^5.0.2"
+        "simple-peer": "^9.11.1",
+        "simple-websocket": "^9.1.0",
+        "tweetnacl": "^1.0.3",
+        "tweetnacl-util": "^0.15.1",
+        "uuid": "^11.1.0",
+        "webtorrent-hybrid": "^5.0.2",
+        "ws": "^8.18.3"
     },
     "devDependencies": {
         "babelify": "^10.0.0",
